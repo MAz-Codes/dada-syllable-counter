@@ -1,145 +1,154 @@
 import React, { useState } from 'react';
 
 export default function DadaVideoCalculator() {
-  const [poemText, setPoemText] = useState('');
-  const [minDuration, setMinDuration] = useState(1);
-  const [maxDuration, setMaxDuration] = useState(8);
-  const [results, setResults] = useState([]);
+  const [currentRoll, setCurrentRoll] = useState(null);
+  const [isRolling, setIsRolling] = useState(false);
+  const [rollHistory, setRollHistory] = useState([]);
+  const [rollMode, setRollMode] = useState('integer'); // 'integer' or 'float'
 
-  const countSyllables = (word) => {
-    word = word.toLowerCase().trim();
-    if (word.length === 0) return 0;
+  const rollDice = () => {
+    setIsRolling(true);
     
-    word = word.replace(/(?:[^laeiouy]es|ed|[^laeiouy]e)$/, '');
-    word = word.replace(/^y/, '');
-    const syllables = word.match(/[aeiouy]{1,2}/g);
-    return syllables ? syllables.length : 1;
-  };
-
-  const calculateDurations = () => {
-    const lines = poemText.split('\n').filter(line => line.trim().length > 0);
-    
-    if (lines.length === 0) {
-      setResults([]);
-      return;
-    }
-
-    const linesWithSyllables = lines.map(line => {
-      const words = line.trim().split(/\s+/);
-      const syllableCount = words.reduce((sum, word) => sum + countSyllables(word), 0);
-      return { text: line, syllables: syllableCount };
-    });
-
-    const maxSyl = Math.max(...linesWithSyllables.map(l => l.syllables));
-    const minSyl = Math.min(...linesWithSyllables.map(l => l.syllables));
-
-    const calculated = linesWithSyllables.map((line, index) => {
-      let duration;
-      if (maxSyl === minSyl) {
-        duration = maxDuration;
+    // Simulate rolling animation with random numbers
+    let count = 0;
+    const interval = setInterval(() => {
+      if (rollMode === 'float') {
+        setCurrentRoll((Math.random() * 10).toFixed(2));
       } else {
-        duration = minDuration + 
-          ((line.syllables - minSyl) / (maxSyl - minSyl)) * 
-          (maxDuration - minDuration);
+        setCurrentRoll(Math.floor(Math.random() * 10) + 1);
       }
+      count++;
       
-      return {
-        lineNumber: index + 1,
-        text: line.text,
-        syllables: line.syllables,
-        duration: duration.toFixed(2)
-      };
-    });
-
-    setResults(calculated);
+      if (count >= 15) {
+        clearInterval(interval);
+        const finalRoll = rollMode === 'float' 
+          ? parseFloat((Math.random() * 10).toFixed(2))
+          : Math.floor(Math.random() * 10) + 1;
+        setCurrentRoll(finalRoll);
+        setRollHistory(prev => [{ value: finalRoll, mode: rollMode }, ...prev].slice(0, 10));
+        setIsRolling(false);
+      }
+    }, 50);
   };
 
-  const totalDuration = results.reduce((sum, r) => sum + parseFloat(r.duration), 0);
+  const clearHistory = () => {
+    setRollHistory([]);
+    setCurrentRoll(null);
+  };
+
+  const getColorClass = (number) => {
+    const num = typeof number === 'string' ? parseFloat(number) : number;
+    if (num >= 9.5) return 'from-amber-400 to-yellow-500';
+    if (num >= 8) return 'from-emerald-400 to-green-500';
+    if (num >= 5) return 'from-blue-400 to-cyan-500';
+    return 'from-slate-400 to-gray-500';
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100 p-8">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-gray-800 p-8 flex items-center justify-center">
+      <div className="max-w-2xl w-full">
         <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-3 mb-2">
-            
-            <h1 className="text-3xl font-bold text-gray-900">Duration Calculator</h1>
+          <h1 className="text-5xl font-bold text-white mb-2">D10 Dice Roller</h1>
+          <p className="text-gray-300">Roll your 10-sided dice</p>
+          
+          {/* Mode Selector */}
+          <div className="flex gap-3 justify-center mt-4">
+            <button
+              onClick={() => setRollMode('integer')}
+              className={`
+                px-6 py-2 rounded-lg font-medium transition-all
+                ${rollMode === 'integer' 
+                  ? 'bg-white text-slate-900 shadow-lg' 
+                  : 'bg-slate-700 text-gray-300 hover:bg-slate-600'
+                }
+              `}
+            >
+              Integer (1-10)
+            </button>
+            <button
+              onClick={() => setRollMode('float')}
+              className={`
+                px-6 py-2 rounded-lg font-medium transition-all
+                ${rollMode === 'float' 
+                  ? 'bg-white text-slate-900 shadow-lg' 
+                  : 'bg-slate-700 text-gray-300 hover:bg-slate-600'
+                }
+              `}
+            >
+              Float (0.00-10.00)
+            </button>
           </div>
-          <p className="text-gray-600">Calculate video clip lengths based on syllable count for our Computational DADA paper</p>
         </div>
 
-        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Paste the poem here (one line at a time)
-          </label>
-          <textarea
-            value={poemText}
-            onChange={(e) => setPoemText(e.target.value)}
-            placeholder="the first line &#10;and then the second line of the poem&#10;third and so on"
-            className="w-full h-48 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent font-mono text-sm"
-          />
-
-          <div className="grid grid-cols-2 gap-4 mt-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Min Duration (seconds)
-              </label>
-              <input
-                type="number"
-                value={minDuration}
-                onChange={(e) => setMinDuration(parseFloat(e.target.value))}
-                min="0.1"
-                step="0.1"
-                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Max Duration (seconds)
-              </label>
-              <input
-                type="number"
-                value={maxDuration}
-                onChange={(e) => setMaxDuration(parseFloat(e.target.value))}
-                min="0.1"
-                step="0.1"
-                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-500"
-              />
-            </div>
+        {/* Dice Display */}
+        <div className="bg-white rounded-2xl shadow-2xl p-12 mb-6 flex flex-col items-center justify-center">
+          <div 
+            className={`
+              w-64 h-64 rounded-3xl shadow-xl flex items-center justify-center
+              transform transition-all duration-300
+              ${isRolling ? 'animate-bounce scale-95' : 'scale-100'}
+              bg-gradient-to-br ${currentRoll ? getColorClass(currentRoll) : 'from-slate-200 to-gray-300'}
+            `}
+          >
+            <span className={`
+              text-9xl font-bold text-white drop-shadow-lg
+              ${isRolling ? 'blur-sm' : 'blur-0'}
+              transition-all duration-200
+            `}>
+              {currentRoll !== null ? (rollMode === 'float' ? parseFloat(currentRoll).toFixed(2) : currentRoll) : '?'}
+            </span>
           </div>
 
           <button
-            onClick={calculateDurations}
-            className="w-full mt-4 bg-slate-700 hover:bg-slate-800 text-white font-medium py-3 px-4 rounded-lg transition-colors"
+            onClick={rollDice}
+            disabled={isRolling}
+            className={`
+              mt-8 px-12 py-4 rounded-xl font-bold text-lg text-white
+              transition-all duration-200 transform
+              ${isRolling 
+                ? 'bg-gray-400 cursor-not-allowed' 
+                : 'bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 hover:scale-105 active:scale-95'
+              }
+            `}
           >
-            Calculate Durations
+            {isRolling ? 'Rolling...' : 'Roll Dice'}
           </button>
         </div>
 
-        {results.length > 0 && (
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">Results</h2>
-            
-            <div className="mb-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
-              <p className="text-sm text-gray-700">
-                <span className="font-semibold">Total composition duration:</span> {totalDuration.toFixed(2)} seconds
-              </p>
+        {/* Roll History */}
+        {rollHistory.length > 0 && (
+          <div className="bg-white rounded-xl shadow-lg p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-gray-800">Roll History</h2>
+              <button
+                onClick={clearHistory}
+                className="text-sm text-slate-600 hover:text-slate-800 underline"
+              >
+                Clear
+              </button>
             </div>
-
-            <div className="space-y-3">
-              {results.map((result) => (
-                <div key={result.lineNumber} className="border border-gray-200 rounded-lg p-4 hover:border-slate-400 transition-colors">
-                  <div className="flex justify-between items-start mb-2">
-                    <span className="text-xs font-medium text-slate-600">
-                      Line {result.lineNumber}
-                    </span>
-                    <span className="text-lg font-bold text-slate-800">
-                      {result.duration}s
-                    </span>
-                  </div>
-                  <p className="text-gray-700 font-mono text-sm mb-2">{result.text}</p>
-                  <p className="text-xs text-gray-500">{result.syllables} syllables</p>
+            
+            <div className="flex flex-wrap gap-3">
+              {rollHistory.map((roll, index) => (
+                <div
+                  key={index}
+                  className={`
+                    ${roll.mode === 'float' ? 'w-20' : 'w-14'} h-14 rounded-lg flex items-center justify-center
+                    ${roll.mode === 'float' ? 'text-lg' : 'text-2xl'} font-bold text-white shadow-md
+                    bg-gradient-to-br ${getColorClass(roll.value)}
+                  `}
+                >
+                  {roll.mode === 'float' ? parseFloat(roll.value).toFixed(2) : roll.value}
                 </div>
               ))}
+            </div>
+
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <p className="text-sm text-gray-600">
+                <span className="font-semibold">Average:</span>{' '}
+                {(rollHistory.reduce((a, b) => a + parseFloat(b.value), 0) / rollHistory.length).toFixed(2)}
+                <span className="ml-4 font-semibold">Total Rolls:</span> {rollHistory.length}
+              </p>
             </div>
           </div>
         )}
